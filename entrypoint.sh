@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
 
-# Start gateway (allow unconfigured for initial setup)
+# Ensure gateway binds to all interfaces (required for container networking)
+clawdbot config set gateway.bind lan 2>/dev/null || true
+
+# Start gateway
 exec clawdbot gateway --allow-unconfigured
