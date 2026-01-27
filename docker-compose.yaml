@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "18789:18789"
+    expose:
+      - "18789"
     environment:
       - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -10,7 +12,15 @@ services:
       - clawdbot_state:/home/node/.clawdbot
       - clawdbot_workspace:/home/node/clawd
     restart: unless-stopped
+    networks:
+      - coolify
+      - default
 
 volumes:
   clawdbot_state:
   clawdbot_workspace:
+
+networks:
+  coolify:
+    external: true
+  default:
