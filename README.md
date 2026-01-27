@@ -88,7 +88,7 @@ Two named volumes persist data across restarts and redeployments:
 |------|---------|
 | `Dockerfile` | Node 22 image with clawdbot installed globally |
 | `entrypoint.sh` | Starts the gateway process |
-| `docker-compose.yaml` | Coolify-compatible compose with volumes |
+| `docker-compose.yaml` / `docker-compose.yml` | Coolify-compatible compose with volumes |
 
 ## Updating Clawdbot
 
@@ -119,10 +119,10 @@ The `entrypoint.sh` in this repo sets this automatically, but if you have an exi
 
 Coolify auto-generates Caddy labels and may override your custom ones. The key is that `{{upstreams}}` without a port defaults to port 80, but Clawdbot uses port 18789.
 
-The `docker-compose.yaml` includes this label to fix it:
+The `docker-compose.yaml` (and `docker-compose.yml`) includes this label to fix it:
 ```yaml
 labels:
-  - "caddy_0.handle_path.0_reverse_proxy={{upstreams 18789}}"
+  - "caddy_0.reverse_proxy={{upstreams 18789}}"
 ```
 
 **Cause 3: Container not on coolify network**
@@ -151,7 +151,7 @@ docker exec -it <container> clawdbot gateway --verbose
 
 ### Port mismatch after changing ports
 
-The config is stored in a volume. If you change the port in `docker-compose.yaml` but the volume has old config, they won't match.
+The config is stored in a volume. If you change the port in `docker-compose.yaml` (or `docker-compose.yml`) but the volume has old config, they won't match.
 
 Fix by updating the config inside the container:
 ```bash
@@ -193,7 +193,7 @@ If local curl works but external doesn't, it's a networking/proxy issue (see 502
 
 3. **No custom Caddy config**: You can't add arbitrary Caddy config from docker-compose labels. Use the label format Coolify expects.
 
-4. **Rebuild vs Restart**: After changing `docker-compose.yaml`, you need **Redeploy** (rebuilds image). After changing config inside the container, you only need **Restart**.
+4. **Rebuild vs Restart**: After changing `docker-compose.yaml` (or `docker-compose.yml`), you need **Redeploy** (rebuilds image). After changing config inside the container, you only need **Restart**.
 
 ## License
 
