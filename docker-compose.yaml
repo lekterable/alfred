@@ -2,7 +2,7 @@ services:
   clawdbot-gateway:
     build: .
     expose:
-      - "8080"
+      - "18789"
     environment:
       - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -13,6 +13,11 @@ services:
     networks:
       - coolify
       - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.clawdbot.loadbalancer.server.port=18789"
+      - "caddy_0.handle_path.0_reverse_proxy={{upstreams 18789}}"
+      - "caddy_ingress_network=coolify"
 
 volumes:
   clawdbot_state:
