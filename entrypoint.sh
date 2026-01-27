@@ -1,5 +1,5 @@
 #!/bin/bash
 set -e
 
-# Start gateway as main process
-exec clawdbot gateway
+# Start gateway (allow unconfigured for initial setup)
+exec clawdbot gateway --allow-unconfigured
