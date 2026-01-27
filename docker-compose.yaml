@@ -16,8 +16,11 @@ services:
       - coolify
       - default
     labels:
+      # Traefik labels
       - "traefik.enable=true"
       - "traefik.http.services.clawdbot.loadbalancer.server.port=18789"
+      # Caddy labels
+      - "caddy_0.handle_path.0_reverse_proxy={{upstreams 18789}}"
       - "caddy_ingress_network=coolify"
 
 volumes:
