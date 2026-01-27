@@ -21,6 +21,7 @@ services:
       - "traefik.http.services.clawdbot.loadbalancer.server.port=18789"
       - "caddy_0.handle_path=/*"
       - "caddy_0.handle_path.0_reverse_proxy={{upstreams 18789}}"
+      - 'caddy_0.basicauth.admin=$2a$14$AtkKEdxjiy1x3W8uGdNwxubF3rAkhp8bw9cH1XYZnswZa2nLMUyKy'
       - "caddy_ingress_network=coolify"
 
 volumes:
