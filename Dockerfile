@@ -11,8 +11,12 @@ LABEL org.opencontainers.image.title="Moltbot Gateway"
 LABEL org.opencontainers.image.description="Personal AI Assistant - Gateway Service"
 LABEL org.opencontainers.image.source="https://github.com/moltbot/moltbot"
 
-# Install system dependencies needed for health checks and config management
+# Install system dependencies:
+#   git        - required by moltbot npm dependencies that reference git repos
+#   curl       - health checks
+#   jq/openssl - config generation in entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     curl \
     jq \
     openssl \
