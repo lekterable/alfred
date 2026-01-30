@@ -76,6 +76,7 @@ services:
   chrome:
     image: browserless/chrome:latest
     restart: unless-stopped
+    shm_size: '2gb'
     environment:
       # Max concurrent browser sessions
       - MAX_CONCURRENT_SESSIONS=5

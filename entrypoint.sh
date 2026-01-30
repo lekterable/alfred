@@ -22,18 +22,14 @@ GW_PASSWORD="${OPENCLAW_GATEWAY_PASSWORD:-${CLAWDBOT_GATEWAY_PASSWORD:-}}"
 GW_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-${CLAWDBOT_GATEWAY_TOKEN:-}}"
 
 AUTH_MODE="none"
-AUTH_EXTRA=""
 if [ -n "${GW_PASSWORD}" ]; then
   AUTH_MODE="password"
-  AUTH_EXTRA="\"password\": \"${GW_PASSWORD}\""
 elif [ -n "${GW_TOKEN}" ]; then
   AUTH_MODE="token"
-  AUTH_EXTRA="\"token\": \"${GW_TOKEN}\""
 else
   # Auto-generate a token if nothing is set
   GW_TOKEN=$(openssl rand -hex 32)
   AUTH_MODE="token"
-  AUTH_EXTRA="\"token\": \"${GW_TOKEN}\""
   echo "============================================"
   echo "  Auto-generated gateway token:"
   echo "  $GW_TOKEN"
@@ -81,8 +77,7 @@ MANAGED_CONFIG=$(cat <<JSONEOF
     "bind": "lan",
     "port": 18789,
     "auth": {
-      "mode": "${AUTH_MODE}",
-      ${AUTH_EXTRA}
+      "mode": "${AUTH_MODE}"
     },
     "trustedProxies": ${PROXIES_JSON},
     "controlUi": {
@@ -103,6 +98,15 @@ MANAGED_CONFIG=$(cat <<JSONEOF
 }
 JSONEOF
 )
+
+# Inject auth credential via jq (safe escaping for special chars in passwords/tokens)
+if [ "$AUTH_MODE" = "password" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --arg val "$GW_PASSWORD" \
+    '.gateway.auth.password = $val')
+elif [ "$AUTH_MODE" = "token" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --arg val "$GW_TOKEN" \
+    '.gateway.auth.token = $val')
+fi
 
 # Add channels config (only if tokens are set)
 if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then

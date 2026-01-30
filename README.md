@@ -170,7 +170,7 @@ For submitting this template to the official Coolify service templates:
 
 **High token costs**: Set `MOLTBOT_CONTEXT_TOKENS=100000` to cap context well below the model limit. If you need to adjust pruning, set `MOLTBOT_CONTEXT_PRUNING`. Use `/status` in chat to check current token usage.
 
-**Redis connection issues**: The gateway connects to Redis via the internal Docker network. If Redis fails, the gateway will fall back to file-based storage. Check Redis health: `docker exec <redis-container> redis-cli ping`.
+**Redis connection issues**: The gateway connects to Redis via the internal Docker network. If Redis is down, check health with: `docker exec <redis-container> redis-cli ping`.
 
 **Chrome/browser issues**: Headless Chrome runs on the internal network only. If browser skills fail, check Chrome container logs: `docker logs <chrome-container>`. The `MAX_CONCURRENT_SESSIONS=5` limit prevents resource exhaustion.
 
