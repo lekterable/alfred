@@ -49,8 +49,49 @@ elif [ -n "${OPENROUTER_API_KEY:-}" ]; then
 fi
 echo "Default model: $DEFAULT_MODEL"
 
+# --- Agent safeguard defaults (prevent runaway token usage) ---
+MAX_TOOL_ERRORS="${MOLTBOT_MAX_TOOL_ERRORS:-3}"
+MAX_TOOL_CALLS="${MOLTBOT_MAX_TOOL_CALLS:-25}"
+CONTEXT_MESSAGES="${MOLTBOT_CONTEXT_MESSAGES:-50}"
+COMPACTION_MODE="${MOLTBOT_COMPACTION_MODE:-safeguard}"
+echo "Agent safeguards: maxConsecutiveToolErrors=$MAX_TOOL_ERRORS, maxToolCallsPerTurn=$MAX_TOOL_CALLS, contextMessages=$CONTEXT_MESSAGES, compaction=$COMPACTION_MODE"
+
 # --- Write gateway config ---
 # Always overwrite to ensure all fields are present and consistent with env vars.
+
+# --- Build channels config (only if tokens are set) ---
+CHANNELS_JSON=""
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || [ -n "${DISCORD_BOT_TOKEN:-}" ]; then
+  CHANNELS_JSON='"channels": {'
+  CHAN_FIRST=true
+
+  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+    [ "$CHAN_FIRST" = false ] && CHANNELS_JSON="$CHANNELS_JSON,"
+    CHANNELS_JSON="$CHANNELS_JSON
+    \"telegram\": {
+      \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",
+      \"polling\": {
+        \"retryDelayMs\": 5000,
+        \"maxRetries\": 10,
+        \"backoffMultiplier\": 2
+      }
+    }"
+    CHAN_FIRST=false
+  fi
+
+  if [ -n "${DISCORD_BOT_TOKEN:-}" ]; then
+    [ "$CHAN_FIRST" = false ] && CHANNELS_JSON="$CHANNELS_JSON,"
+    CHANNELS_JSON="$CHANNELS_JSON
+    \"discord\": {
+      \"botToken\": \"${DISCORD_BOT_TOKEN}\"
+    }"
+    CHAN_FIRST=false
+  fi
+
+  CHANNELS_JSON="$CHANNELS_JSON
+  },"
+fi
+
 cat > "$CONFIG_FILE" <<EOF
 {
   "gateway": {
@@ -69,13 +110,23 @@ cat > "$CONFIG_FILE" <<EOF
   "web": {
     "enabled": true
   },
+  ${CHANNELS_JSON}
   "agents": {
     "defaults": {
       "workspace": "/home/node/clawd",
       "model": {
         "primary": "${DEFAULT_MODEL}"
+      },
+      "maxConsecutiveToolErrors": ${MAX_TOOL_ERRORS},
+      "maxToolCallsPerTurn": ${MAX_TOOL_CALLS},
+      "contextMessages": ${CONTEXT_MESSAGES},
+      "compaction": {
+        "mode": "${COMPACTION_MODE}"
       }
     }
+  },
+  "cron": {
+    "isolated": true
   }
 }
 EOF
