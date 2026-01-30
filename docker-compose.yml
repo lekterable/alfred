@@ -5,11 +5,11 @@ services:
       - "18789"
     environment:
       # Gateway authentication (at least one required)
-      # Supports both OPENCLAW_ and legacy CLAWDBOT_ prefixes (entrypoint handles fallback)
+      # Use OPENCLAW_GATEWAY_PASSWORD or OPENCLAW_GATEWAY_TOKEN in Coolify settings.
+      # Legacy CLAWDBOT_* names are accepted at runtime by entrypoint.sh fallback logic,
+      # but must NOT appear here — Coolify's build-time .env generator chokes on them.
       - OPENCLAW_GATEWAY_PASSWORD=${OPENCLAW_GATEWAY_PASSWORD}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - CLAWDBOT_GATEWAY_PASSWORD=${CLAWDBOT_GATEWAY_PASSWORD}
-      - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN}
       # Internal paths
       - OPENCLAW_STATE_DIR=/home/node/.openclaw
       # AI provider API keys (at least one required)
