@@ -50,49 +50,19 @@ fi
 echo "Default model: $DEFAULT_MODEL"
 
 # --- Agent safeguard defaults (prevent runaway token usage) ---
+# These are only injected into config when explicitly set via env vars,
+# except maxConsecutiveToolErrors and maxToolCallsPerTurn which have safe defaults.
 MAX_TOOL_ERRORS="${MOLTBOT_MAX_TOOL_ERRORS:-3}"
 MAX_TOOL_CALLS="${MOLTBOT_MAX_TOOL_CALLS:-25}"
-CONTEXT_MESSAGES="${MOLTBOT_CONTEXT_MESSAGES:-50}"
-COMPACTION_MODE="${MOLTBOT_COMPACTION_MODE:-safeguard}"
-echo "Agent safeguards: maxConsecutiveToolErrors=$MAX_TOOL_ERRORS, maxToolCallsPerTurn=$MAX_TOOL_CALLS, contextMessages=$CONTEXT_MESSAGES, compaction=$COMPACTION_MODE"
+echo "Agent safeguards: maxConsecutiveToolErrors=$MAX_TOOL_ERRORS, maxToolCallsPerTurn=$MAX_TOOL_CALLS"
+[ -n "${MOLTBOT_CONTEXT_MESSAGES:-}" ] && echo "  contextMessages=$MOLTBOT_CONTEXT_MESSAGES"
+[ -n "${MOLTBOT_COMPACTION_MODE:-}" ] && echo "  compaction=$MOLTBOT_COMPACTION_MODE"
 
 # --- Write gateway config ---
-# Always overwrite to ensure all fields are present and consistent with env vars.
+# Deep-merge entrypoint-managed keys into existing config (preserves UI-configured settings).
 
-# --- Build channels config (only if tokens are set) ---
-CHANNELS_JSON=""
-if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || [ -n "${DISCORD_BOT_TOKEN:-}" ]; then
-  CHANNELS_JSON='"channels": {'
-  CHAN_FIRST=true
-
-  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
-    [ "$CHAN_FIRST" = false ] && CHANNELS_JSON="$CHANNELS_JSON,"
-    CHANNELS_JSON="$CHANNELS_JSON
-    \"telegram\": {
-      \"botToken\": \"${TELEGRAM_BOT_TOKEN}\",
-      \"polling\": {
-        \"retryDelayMs\": 5000,
-        \"maxRetries\": 10,
-        \"backoffMultiplier\": 2
-      }
-    }"
-    CHAN_FIRST=false
-  fi
-
-  if [ -n "${DISCORD_BOT_TOKEN:-}" ]; then
-    [ "$CHAN_FIRST" = false ] && CHANNELS_JSON="$CHANNELS_JSON,"
-    CHANNELS_JSON="$CHANNELS_JSON
-    \"discord\": {
-      \"botToken\": \"${DISCORD_BOT_TOKEN}\"
-    }"
-    CHAN_FIRST=false
-  fi
-
-  CHANNELS_JSON="$CHANNELS_JSON
-  },"
-fi
-
-cat > "$CONFIG_FILE" <<EOF
+# Build the entrypoint-managed config as a JSON object
+MANAGED_CONFIG=$(cat <<JSONEOF
 {
   "gateway": {
     "mode": "local",
@@ -110,7 +80,6 @@ cat > "$CONFIG_FILE" <<EOF
   "web": {
     "enabled": true
   },
-  ${CHANNELS_JSON}
   "agents": {
     "defaults": {
       "workspace": "/home/node/clawd",
@@ -118,61 +87,105 @@ cat > "$CONFIG_FILE" <<EOF
         "primary": "${DEFAULT_MODEL}"
       },
       "maxConsecutiveToolErrors": ${MAX_TOOL_ERRORS},
-      "maxToolCallsPerTurn": ${MAX_TOOL_CALLS},
-      "contextMessages": ${CONTEXT_MESSAGES},
-      "compaction": {
-        "mode": "${COMPACTION_MODE}"
-      }
+      "maxToolCallsPerTurn": ${MAX_TOOL_CALLS}
     }
   },
   "cron": {
     "isolated": true
   }
 }
-EOF
+JSONEOF
+)
+
+# Add channels config (only if tokens are set)
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --arg token "$TELEGRAM_BOT_TOKEN" \
+    '.channels.telegram = {
+      "botToken": $token,
+      "polling": {
+        "retryDelayMs": 5000,
+        "maxRetries": 10,
+        "backoffMultiplier": 2
+      }
+    }')
+fi
+if [ -n "${DISCORD_BOT_TOKEN:-}" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --arg token "$DISCORD_BOT_TOKEN" \
+    '.channels.discord = { "botToken": $token }')
+fi
+
+# Add optional safeguards only when explicitly set via env vars
+if [ -n "${MOLTBOT_CONTEXT_MESSAGES:-}" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --argjson val "$MOLTBOT_CONTEXT_MESSAGES" \
+    '.agents.defaults.contextMessages = $val')
+fi
+if [ -n "${MOLTBOT_COMPACTION_MODE:-}" ]; then
+  MANAGED_CONFIG=$(echo "$MANAGED_CONFIG" | jq --arg val "$MOLTBOT_COMPACTION_MODE" \
+    '.agents.defaults.compaction.mode = $val')
+fi
+
+# Deep-merge: existing config is the base, entrypoint-managed keys override
+if [ -f "$CONFIG_FILE" ]; then
+  echo "Merging entrypoint config into existing $CONFIG_FILE"
+  EXISTING=$(cat "$CONFIG_FILE")
+  # jq '*' does recursive merge — managed config (right) wins on conflicts
+  MERGED=$(echo "$EXISTING" "$MANAGED_CONFIG" | jq -s '.[0] * .[1]')
+  echo "$MERGED" > "$CONFIG_FILE"
+else
+  echo "Creating new $CONFIG_FILE"
+  echo "$MANAGED_CONFIG" | jq '.' > "$CONFIG_FILE"
+fi
 echo "Config written to $CONFIG_FILE"
 
 # --- Build auth-profiles.json for API keys ---
+# Merges env-var keys into existing profiles (preserves UI-configured keys).
 AUTH_DIR="$CONFIG_DIR/agents/main/agent"
+AUTH_FILE="$AUTH_DIR/auth-profiles.json"
 mkdir -p "$AUTH_DIR"
 
-AUTH_JSON="{"
-FIRST=true
+ENV_PROFILES="{}"
+HAS_ENV_KEYS=false
 
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  [ "$FIRST" = false ] && AUTH_JSON="$AUTH_JSON,"
-  AUTH_JSON="$AUTH_JSON\"anthropic:api\":{\"provider\":\"anthropic\",\"mode\":\"api_key\",\"apiKey\":\"$ANTHROPIC_API_KEY\"}"
-  echo "Added Anthropic API key"
-  FIRST=false
+  ENV_PROFILES=$(echo "$ENV_PROFILES" | jq --arg key "$ANTHROPIC_API_KEY" \
+    '.["anthropic:api"] = {"provider":"anthropic","mode":"api_key","apiKey":$key}')
+  echo "Added Anthropic API key from env"
+  HAS_ENV_KEYS=true
 fi
 
 if [ -n "${GOOGLE_API_KEY:-}" ]; then
-  [ "$FIRST" = false ] && AUTH_JSON="$AUTH_JSON,"
-  AUTH_JSON="$AUTH_JSON\"google:api\":{\"provider\":\"google\",\"mode\":\"api_key\",\"apiKey\":\"$GOOGLE_API_KEY\"}"
-  echo "Added Google API key"
-  FIRST=false
+  ENV_PROFILES=$(echo "$ENV_PROFILES" | jq --arg key "$GOOGLE_API_KEY" \
+    '.["google:api"] = {"provider":"google","mode":"api_key","apiKey":$key}')
+  echo "Added Google API key from env"
+  HAS_ENV_KEYS=true
 fi
 
 if [ -n "${OPENAI_API_KEY:-}" ]; then
-  [ "$FIRST" = false ] && AUTH_JSON="$AUTH_JSON,"
-  AUTH_JSON="$AUTH_JSON\"openai:api\":{\"provider\":\"openai\",\"mode\":\"api_key\",\"apiKey\":\"$OPENAI_API_KEY\"}"
-  echo "Added OpenAI API key"
-  FIRST=false
+  ENV_PROFILES=$(echo "$ENV_PROFILES" | jq --arg key "$OPENAI_API_KEY" \
+    '.["openai:api"] = {"provider":"openai","mode":"api_key","apiKey":$key}')
+  echo "Added OpenAI API key from env"
+  HAS_ENV_KEYS=true
 fi
 
 if [ -n "${OPENROUTER_API_KEY:-}" ]; then
-  [ "$FIRST" = false ] && AUTH_JSON="$AUTH_JSON,"
-  AUTH_JSON="$AUTH_JSON\"openrouter:api\":{\"provider\":\"openrouter\",\"mode\":\"api_key\",\"apiKey\":\"$OPENROUTER_API_KEY\"}"
-  echo "Added OpenRouter API key"
-  FIRST=false
+  ENV_PROFILES=$(echo "$ENV_PROFILES" | jq --arg key "$OPENROUTER_API_KEY" \
+    '.["openrouter:api"] = {"provider":"openrouter","mode":"api_key","apiKey":$key}')
+  echo "Added OpenRouter API key from env"
+  HAS_ENV_KEYS=true
 fi
 
-AUTH_JSON="$AUTH_JSON}"
-
-if [ "$FIRST" = false ]; then
-  echo "$AUTH_JSON" > "$AUTH_DIR/auth-profiles.json"
-  echo "Auth profiles written to $AUTH_DIR/auth-profiles.json"
-else
+if [ "$HAS_ENV_KEYS" = true ]; then
+  if [ -f "$AUTH_FILE" ]; then
+    # Merge: existing profiles are base, env-var profiles override matching keys
+    echo "Merging env API keys into existing $AUTH_FILE"
+    EXISTING_AUTH=$(cat "$AUTH_FILE")
+    MERGED_AUTH=$(echo "$EXISTING_AUTH" "$ENV_PROFILES" | jq -s '.[0] * .[1]')
+    echo "$MERGED_AUTH" > "$AUTH_FILE"
+  else
+    echo "$ENV_PROFILES" | jq '.' > "$AUTH_FILE"
+  fi
+  echo "Auth profiles written to $AUTH_FILE"
+elif [ ! -f "$AUTH_FILE" ]; then
   echo ""
   echo "=========================================="
   echo "WARNING: No API keys configured!"
@@ -184,6 +197,8 @@ else
   echo "  - OPENROUTER_API_KEY"
   echo "=========================================="
   echo ""
+else
+  echo "No env API keys set, keeping existing $AUTH_FILE intact"
 fi
 
 # --- Log channel tokens ---
