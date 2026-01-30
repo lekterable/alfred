@@ -5,9 +5,11 @@ services:
       - "18789"
     environment:
       # Gateway authentication (at least one required)
-      # Supports both OPENCLAW_ and legacy CLAWDBOT_ prefixes
-      - OPENCLAW_GATEWAY_PASSWORD=${OPENCLAW_GATEWAY_PASSWORD:-${CLAWDBOT_GATEWAY_PASSWORD:-}}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${CLAWDBOT_GATEWAY_TOKEN:-}}
+      # Supports both OPENCLAW_ and legacy CLAWDBOT_ prefixes (entrypoint handles fallback)
+      - OPENCLAW_GATEWAY_PASSWORD=${OPENCLAW_GATEWAY_PASSWORD:-}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - CLAWDBOT_GATEWAY_PASSWORD=${CLAWDBOT_GATEWAY_PASSWORD:-}
+      - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN:-}
       # Internal paths
       - OPENCLAW_STATE_DIR=/home/node/.openclaw
       # AI provider API keys (at least one required)
