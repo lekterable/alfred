@@ -19,15 +19,19 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       # Agent safeguards (prevent runaway token usage)
-      - MOLTBOT_MAX_TOOL_ERRORS=${MOLTBOT_MAX_TOOL_ERRORS:-3}
-      - MOLTBOT_MAX_TOOL_CALLS=${MOLTBOT_MAX_TOOL_CALLS:-25}
+      - MOLTBOT_MAX_TOOL_ERRORS=${MOLTBOT_MAX_TOOL_ERRORS:-2}
+      - MOLTBOT_MAX_TOOL_CALLS=${MOLTBOT_MAX_TOOL_CALLS:-15}
+      - MOLTBOT_CONTEXT_PRUNING=${MOLTBOT_CONTEXT_PRUNING:-adaptive}
       # Optional: set these only if you want to override moltbot defaults
+      - MOLTBOT_CONTEXT_TOKENS=${MOLTBOT_CONTEXT_TOKENS:-}
       - MOLTBOT_CONTEXT_MESSAGES=${MOLTBOT_CONTEXT_MESSAGES:-}
       - MOLTBOT_COMPACTION_MODE=${MOLTBOT_COMPACTION_MODE:-}
+      - MOLTBOT_SESSION_IDLE_MINUTES=${MOLTBOT_SESSION_IDLE_MINUTES:-}
     volumes:
       - moltbot_state:/home/node/.clawdbot
       - moltbot_workspace:/home/node/clawd
     restart: unless-stopped
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
       interval: 30s
