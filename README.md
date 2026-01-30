@@ -46,20 +46,22 @@ If neither is set, a random token is auto-generated and printed in container log
 
 ### Token Usage Safeguards (optional)
 
-These settings prevent runaway API costs from tool-call loops, context bloat, and polling issues. Defaults are conservative and should work for most deployments.
+These settings prevent runaway API costs from tool-call loops, context bloat, and polling issues.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MOLTBOT_MAX_TOOL_ERRORS` | `3` | Abort after N consecutive identical tool errors (prevents infinite loop burns) |
 | `MOLTBOT_MAX_TOOL_CALLS` | `25` | Max tool invocations per agent turn (hard cap) |
-| `MOLTBOT_CONTEXT_MESSAGES` | `50` | Max messages kept in session context (limits token accumulation) |
-| `MOLTBOT_COMPACTION_MODE` | `safeguard` | Context compaction strategy (`safeguard` = adaptive chunking with fallback) |
+| `MOLTBOT_CONTEXT_MESSAGES` | *(unset)* | Max messages kept in session context — only set if you want to cap history (e.g., `50`) |
+| `MOLTBOT_COMPACTION_MODE` | *(unset)* | Context compaction strategy — set to `safeguard` for adaptive chunking with fallback |
 
 **What these protect against:**
 - **Tool-call infinite loops**: When a model repeatedly makes the same failing tool call (e.g., wrong parameter name), `MAX_TOOL_ERRORS=3` stops it after 3 identical errors instead of 25+.
-- **Context dragging**: Large tool outputs (JSON schemas, logs) get appended to session history and carried forward. `CONTEXT_MESSAGES=50` caps how much history the model processes per turn.
+- **Context dragging**: Large tool outputs (JSON schemas, logs) get appended to session history and carried forward. Set `CONTEXT_MESSAGES` to cap how much history the model processes per turn.
 - **Cron session bloat**: Cron jobs are configured to run in isolated sessions (fresh context per run) so they don't accumulate history.
 - **Telegram polling storms**: Telegram channel config includes retry backoff (5s base, 2x multiplier, max 10 retries) to prevent tight reconnect loops on transient network errors.
+
+**Note:** Config and auth profiles are now **merged** on redeploy, not overwritten. Keys configured through the moltbot Control UI will survive container restarts.
 
 ## Architecture
 
