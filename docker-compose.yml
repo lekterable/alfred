@@ -18,6 +18,11 @@ services:
       # Channel integrations (optional)
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      # Agent safeguards (prevent runaway token usage)
+      - MOLTBOT_MAX_TOOL_ERRORS=${MOLTBOT_MAX_TOOL_ERRORS:-3}
+      - MOLTBOT_MAX_TOOL_CALLS=${MOLTBOT_MAX_TOOL_CALLS:-25}
+      - MOLTBOT_CONTEXT_MESSAGES=${MOLTBOT_CONTEXT_MESSAGES:-50}
+      - MOLTBOT_COMPACTION_MODE=${MOLTBOT_COMPACTION_MODE:-safeguard}
     volumes:
       - moltbot_state:/home/node/.clawdbot
       - moltbot_workspace:/home/node/clawd
