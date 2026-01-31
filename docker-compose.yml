@@ -31,6 +31,8 @@ services:
       # Backend services (auto-configured via internal Docker network)
       - REDIS_URL=redis://redis:6379
       - BROWSER_WS_ENDPOINT=ws://chrome:3000
+      # Additional envs
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
     volumes:
       - openclaw_state:/home/node/.openclaw
       - openclaw_workspace:/home/node/.openclaw/workspace
