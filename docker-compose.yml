@@ -35,8 +35,10 @@ services:
       - BRAVE_API_KEY=${BRAVE_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
+      - npm_global:/usr/local/lib/node_modules
       - openclaw_state:/home/node/.openclaw
       - openclaw_workspace:/home/node/.openclaw/workspace
+      - usr_local_bin:/usr/local/bin
     restart: unless-stopped
     stop_grace_period: 30s
     healthcheck:
@@ -88,9 +90,11 @@ services:
       - default
 
 volumes:
+  npm_global:
   openclaw_state:
   openclaw_workspace:
   redis_data:
+  usr_local_bin:
 
 networks:
   coolify:
