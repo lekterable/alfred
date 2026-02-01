@@ -43,16 +43,7 @@ TRUSTED_PROXIES="${CLAWDBOT_TRUSTED_PROXIES:-$DEFAULT_PROXIES}"
 PROXIES_JSON=$(echo "$TRUSTED_PROXIES" | sed 's/,/", "/g' | sed 's/^/["/' | sed 's/$/"]/')
 
 # --- Determine default model based on available API keys ---
-DEFAULT_MODEL="anthropic/claude-sonnet-4-5"
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  DEFAULT_MODEL="anthropic/claude-sonnet-4-5"
-elif [ -n "${GOOGLE_API_KEY:-}" ]; then
-  DEFAULT_MODEL="google/gemini-2.5-pro"
-elif [ -n "${OPENAI_API_KEY:-}" ]; then
-  DEFAULT_MODEL="openai/gpt-4o"
-elif [ -n "${OPENROUTER_API_KEY:-}" ]; then
-  DEFAULT_MODEL="openrouter/anthropic/claude-sonnet-4"
-fi
+DEFAULT_MODEL="${OPENCLAW_DEFAULT_MODEL:-anthropic/claude-haiku-4-5}"
 echo "Default model: $DEFAULT_MODEL"
 
 # --- Agent safeguards (opt-in) ---
