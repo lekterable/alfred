@@ -33,6 +33,7 @@ services:
       - BROWSER_WS_ENDPOINT=ws://chrome:3000
       # Additional envs
       - BRAVE_API_KEY=${BRAVE_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - openclaw_state:/home/node/.openclaw
       - openclaw_workspace:/home/node/.openclaw/workspace
